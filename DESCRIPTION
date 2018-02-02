@@ -1,0 +1,21 @@
+Package: BioCorpus
+Type: Package
+Title: Biological Terms Corpus for Language Processing and Text Tidying
+Version: 1.0.0
+Authors@R: c(person("Evan", "Henrich", role = "aut"),
+             person("Ju Yeong", "Kim", role = "aut"),
+             person("Lauren", "Wolfe", role = "aut"),
+             person("ImmuneSpace Package Maintainer",
+                    email = "immunespace@gmail.com",
+                    role = c("cre", "cph")))
+Description: BioCorpus contains data and scripts that draw on public and 
+    private biological data repositories to create a curated corpus for use
+    in text tidying.
+URL: https://FHCRC.github.com/ehenrich/BioCorpus
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Imports: 
+Suggests: testthat,
+    covr
+RoxygenNote: 6.0.1
