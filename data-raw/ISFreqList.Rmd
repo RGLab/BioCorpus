@@ -1,0 +1,51 @@
+---
+title: "Create ImmuneSpace Word Frequency List"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Create ISFreqsList}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## How the list is made
+In the `makeContextVector()` function, the utility function `vec2words()` is used.  This function
+takes in a character vector and then performs a series of operations:
+1. De-duplicate the elements in the vector
+2. Remove NA elements
+3. Substitute a single whitespace string for certain punctuation
+4. Condense any multiple whitespaces into one
+5. Split each element into a sub-list of character strings with split = " ", aka words
+6. Collect all words into one list
+7. Set all letters to lowercase
+8. Remove digit-only words
+9. For words with only alpha characters, break apart compound words
+10. For words with mixed alphanumeric characters, keep only those with "cd|il"
+11. Remove words with less than 2 characters
+
+This order of operations is similar to those implemented by the openRefine project by Google. 
+The key decisions are described below:
+1. De-duplication prior to splitting - By de-duplicating first, we bias the corpus towards words
+that are found across studies instead of within studies. This is because it is common for elements
+in the same study to have been copy-pasted and therefore not unique.  If there is a misspelling,
+then this error is propagated.  Therefore, we seek to mitigate possible copy-paste errors using
+`unique()` at this early stage.
+2. Removing punctuation and digits - Although some punctuation is used in different terms, such
+as "anti-hemoglobin", it was decided to limit punctuation only to biologically-specific terms
+such as "CD4+" and "IL-2"
+
+```{r, create-word-lists}
+# Create word frequencies list object
+ISqueries <- read.csv("ImmuneSpaceQueries.csv", stringsAsFactors = F)
+lsWords <- mapply(makeISContextVector, 
+                  tableName = ISqueries$tableName,
+                  colName = ISqueries$columnName)
+names(lsWords) <- paste0(ISqueries$tableName, "-", ISqueries$columnName)
+ISFreqsByNm <- sapply(lsWords, table)
+save(ISFreqsByNm, file = "../data/ISFreqsByNm.rda")
+ISFreqsAll <- table(unlist(lsWords))
+save(ISFreqsAll, file = "../data/ISFreqsAll.rda")
+```
+
