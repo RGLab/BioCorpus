@@ -26,14 +26,16 @@ vec2Words <- function(charVec){
 #' @importFrom Rlabkey labkey.selectRows
 #' @import stopwords
 #' @export
-makeISContextVector <- function(tableName, colName){
-  print(paste0(tableName, "-", colName))
+getISdata <- function(tableName, colName){
+  newNm <- paste0(tableName, "-", colName)
+  message(newNm)
   tmp <- labkey.selectRows(baseUrl = "https://www.immunespace.org",
                            folderPath = "/Studies/",
                            schemaName = "ImmPort",
                            queryName = tableName,
-                           colSelect = c(colName),
+                           colSelect = c(colName, "study_accession"),
                            colNameOpt = "fieldname")
-  words <- vec2Words(tmp)
-  words <- words[ !(words %in% stopwords(source = "smart")) ]
+  tmp$tblCol <- newNm
+  colnames(tmp)[[1]] <- "value" # standardize to allow rbind
+  return(tmp)
 }

@@ -37,15 +37,100 @@ as "anti-hemoglobin", it was decided to limit punctuation only to biologically-s
 such as "CD4+" and "IL-2"
 
 ```{r, create-word-lists}
-# Create word frequencies list object
+# Create df with value, study accession, and tableName-colName as columns
 ISqueries <- read.csv("ImmuneSpaceQueries.csv", stringsAsFactors = F)
-lsWords <- mapply(makeISContextVector, 
-                  tableName = ISqueries$tableName,
-                  colName = ISqueries$columnName)
-names(lsWords) <- paste0(ISqueries$tableName, "-", ISqueries$columnName)
-ISFreqsByNm <- sapply(lsWords, table)
-save(ISFreqsByNm, file = "../data/ISFreqsByNm.rda")
-ISFreqsAll <- table(unlist(lsWords))
+ISdfs <- mapply(getISdata, 
+                tableName = ISqueries$tableName,
+                colName = ISqueries$columnName,
+                SIMPLIFY = FALSE) # 'SIMPLIFY' defaults to TRUE and returns vector. Argh.
+df <- do.call(rbind, ISdfs)
+
+# Get stopwords
+stpWrds <- stopwords::stopwords(source="smart")
+
+# Helper for making frequency tables
+makeFreqTbl <- function(values, colNm){
+  lsWords <- lapply(values, function(x){ 
+    tmp <- df[ df[[colNm]] == x, ]
+    tmp <- vec2Words(tmp[,1])
+    tmp <- tmp[ !(tmp %in% stpWrds) ]
+  })
+  freqTbl <- sapply(lsWords, table)
+  names(freqTbl) <- values
+  return(freqTbl)
+}
+
+# Word frequencies by tblCol
+tcNms <- paste(ISqueries$tableName, ISqueries$columnName, sep = "-")
+ISFreqsByTbl <- makeFreqTbl(tcNms, "tblCol")
+save(ISFreqsByTbl, file = "../data/ISFreqsByTbl.rda")
+
+# Word frequencies by Sdy
+studies <- unique(df$study_accession)
+ISFreqsBySdy <- makeFreqTbl(studies, "study_accession")
+save(ISFreqsBySdy, file = "../data/ISFreqsBySdy.rda")
+
+# No subsetting - all words as one vector
+all <- vec2Words(df$value)
+all <- all[ !(all %in% stpWrds) ]
+ISFreqsAll <- table(all)
 save(ISFreqsAll, file = "../data/ISFreqsAll.rda")
 ```
 
+## Look at most common words in whole db
+```{r, most-common-words-in-db}
+allDf <- data.frame(ISFreqsAll, stringsAsFactors = F)
+colnames(allDf)[[1]] <- "word"
+
+# Getting a sense of frequency distribution
+print(quantile(allDf$Freq))
+
+# Look at most common words
+allDf <- allDf[ order(-allDf$Freq), ]
+common <- allDf[ allDf$Freq > 100, ]
+hist(common$Freq)
+DT::datatable(common[1:30, ])
+```
+
+
+## look at most common words by table/columnName combination
+this actually doesn't tell us much because the words are so unique to each column
+that there is little overlap
+```{r tf-idf}
+
+# Helper for tf-idf
+makeTfIdf <- function(freqTbl){
+  tLs <- lapply(names(freqTbl), function(x){
+    tmp <- data.frame(freqTbl[[x]], stringsAsFactors = FALSE)
+    colnames(tmp)[[1]] <- "word"
+    tmp$varNm <- x
+    tmp$varPerc <- tmp$Freq / sum(tmp$Freq)
+    return(tmp)
+  })
+  tDf <- do.call(rbind, tLs)
+  
+  tDf$docFreq <- allDf$Freq[ match(tDf$word, allDf$word) ]
+  tDf$docPerc <- tDf$docFreq / sum(tDf$docFreq)
+  tDf$tf_idf <- tDf$varPerc / tDf$docPerc
+  
+  subDf <- tDf %>%
+    group_by(varNm) %>%
+    arrange(desc(tf_idf)) %>%
+    slice(1:10)
+}
+
+topWordsByTbl <- makeTfIdf(ISFreqsByTbl)
+topWordsBySdy <- makeTfIdf(ISFreqsBySdy)
+```
+
+
+## Let's see what words are found across studies ... may be corroborated a bit!
+
+
+
+## Can we recommend studies based on similarity of words in them? Create study taxonomy?
+
+
+
+## What are the most commonly misspelled words? (found across studies, so we know they 
+are right, but do have some misspellings)
