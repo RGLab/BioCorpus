@@ -93,9 +93,8 @@ DT::datatable(common[1:30, ])
 ```
 
 
-## look at most common words by table/columnName combination
-this actually doesn't tell us much because the words are so unique to each column
-that there is little overlap
+## look at most unique words in each tblCol and Study. This is known as the
+text-frequency inverse-document-frequency or Tf-Idf.
 ```{r tf-idf}
 
 # Helper for tf-idf
@@ -121,16 +120,39 @@ makeTfIdf <- function(freqTbl){
 
 topWordsByTbl <- makeTfIdf(ISFreqsByTbl)
 topWordsBySdy <- makeTfIdf(ISFreqsBySdy)
+
+DT::datatable(topWordsBySdy)
+```
+
+## Can we recommend studies based on similarity of words in them? Correlation matrix of word
+proportion in each sdy by sdy name
+```{r word-prop-cor-matrix}
+# Fill in words with zero frequency for each study and order alphabetically
+newAll <- lapply(ISFreqsBySdy, function(x){
+  missing <- setdiff(names(ISFreqsAll), names(x))
+  new <- as.list(rep(0,length(missing)))
+  names(new) <- missing
+  all <- c(new, x)
+  all <- all[ order(names(all)) ]
+})
+
+# fast list-2-df 
+corrMx <- structure(newAll, row.names = c(NA, -(length(newAll[[1]]))), class = "data.frame")
+rownames(corrMx) <- names(newAll[[1]])
+
+# Ensure all numeric vals
+corrMx <- apply(corrMx, 2, as.numeric)
+
+# create corr matrix and visualize
+library(corrplot)
+res <- cor(corrMx)
+corrplot(res, method = "circle")
 ```
 
 
-## Let's see what words are found across studies ... may be corroborated a bit!
-
-
-
-## Can we recommend studies based on similarity of words in them? Create study taxonomy?
+## Create study taxonomy?
 
 
 
 ## What are the most commonly misspelled words? (found across studies, so we know they 
-are right, but do have some misspellings)
+are right, but do have some misspellings) - using RefinR to improve freqTbls
