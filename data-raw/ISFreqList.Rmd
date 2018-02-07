@@ -1,5 +1,5 @@
 ---
-title: "Create ImmuneSpace Word Frequency List"
+title: "Create ImmPort Word Frequency List"
 output: rmarkdown::html_document
 vignette: >
   %\VignetteEngine{knitr::rmarkdown}
@@ -8,6 +8,8 @@ vignette: >
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(BioCorpus)
 ```
 
 ## How the list is made
@@ -46,7 +48,7 @@ ISdfs <- mapply(getISdata,
 df <- do.call(rbind, ISdfs)
 
 # Get stopwords
-stpWrds <- stopwords::stopwords(source="smart")
+stpWrds <- stopwords::stopwords(source = "smart")
 
 # Helper for making frequency tables
 makeFreqTbl <- function(values, colNm){
@@ -92,7 +94,6 @@ hist(common$Freq)
 DT::datatable(common[1:30, ])
 ```
 
-
 ## look at most unique words in each tblCol and Study. This is known as the
 text-frequency inverse-document-frequency or Tf-Idf.
 ```{r tf-idf}
@@ -124,8 +125,8 @@ topWordsBySdy <- makeTfIdf(ISFreqsBySdy)
 DT::datatable(topWordsBySdy)
 ```
 
-## Can we recommend studies based on similarity of words in them? Correlation matrix of word
-proportion in each sdy by sdy name
+## Can we recommend studies based on similarity of words in them? 
+Correlation matrix of word proportion in each sdy by sdy name
 ```{r word-prop-cor-matrix}
 # Fill in words with zero frequency for each study and order alphabetically
 newAll <- lapply(ISFreqsBySdy, function(x){
@@ -143,16 +144,66 @@ rownames(corrMx) <- names(newAll[[1]])
 # Ensure all numeric vals
 corrMx <- apply(corrMx, 2, as.numeric)
 
-# create corr matrix and visualize
-library(corrplot)
+# create corr matrix and visualize as heatmap
 res <- cor(corrMx)
-corrplot(res, method = "circle")
+heatmap(res)
 ```
 
+## Similarities by organization?
+```{r orgs-vs-clusters}
+# Hard to see differences, so look at cluster in a dendogram
+distr <- dist(res)
+hcr <- hclust(distr)
+ddr <- as.dendrogram(hcr)
+plot(ddr)
 
-## Create study taxonomy?
+# Let's create 10 groups and see correlate with the institution listed with the study
+trees <- cutree(hcr, k = 10)
+invTrees <- Biobase::reverseSplit(trees)
+clusts <- rep(names(invTrees), lengths(invTrees))
+treeClusts <- data.frame(clusters = clusts, study_accession = unname(unlist(invTrees)))
 
+sdyInsts <- getISdata("study_personnel", "organization")
+sdyInsts <- unique(sdyInsts)
+sdyInsts <- sdyInsts[,1:2]
 
+OrgsClusts <- merge(sdyInsts, treeClusts, by = "study_accession")
+chiRes <- chisq.test(x = OrgsClusts$value, y = OrgsClusts$clusters)
+```
 
-## What are the most commonly misspelled words? (found across studies, so we know they 
-are right, but do have some misspellings) - using RefinR to improve freqTbls
+## Tidying up the all studies frequency table to remove misspellings
+Look at the suggestions for 3 different methods
+```{r tidy-freq-tbl}
+x <- names(ISFreqsAll)
+
+# hunspell::hunspell_suggest based on english dictionary
+library(hunspell)
+correct <- hunspell_check(x)
+incorrect <- as.character(x[ !correct ])
+suggs <- hunspell_suggest(incorrect)
+suggs_likely <- lapply(suggs, function(x){ ifelse(length(x) > 1, x[[1]], x)})
+inspect_huns <- data.frame(orig = incorrect, suggestions = unlist(suggs_likely))
+
+# RefinR based on google's OpenRefine
+library(refinr)
+x_refin <- x %>% 
+  refinr::key_collision_merge() %>% 
+  refinr::n_gram_merge()
+results <- data_frame(original_values = x, suggestions = x_refin) %>% 
+  mutate(equal = original_values == suggestions)
+inspect_refine <- results[ results$original_values %in% incorrect, ]
+inspect_refine <- inspect_refine[ order(match(inspect_refine$original_values, incorrect)), ]
+
+# Offer suggestions based on frequencies in a custom frequency table (dictionary)
+bestGuess <- bestGuess(incorrect, ISFreqsAll)
+inspect_sims <- data.frame(incorrect = incorrect, suggestions = bestGuess)
+
+# Create df holding all suggestions
+suggDf <- data.frame(incorrect = incorrect,
+                     hunspell = inspect_huns$suggestions,
+                     refinR = inspect_refine$suggestions,
+                     bestGuess = inspect_sims$suggestions,
+                     stringsAsFactors = FALSE)
+
+DT::datatable(suggDf)
+```
