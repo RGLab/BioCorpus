@@ -10,6 +10,7 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(BioCorpus)
+library(corpusFreq)
 ```
 
 ## How the list is made
@@ -47,35 +48,28 @@ ISdfs <- mapply(getISdata,
                 SIMPLIFY = FALSE) # 'SIMPLIFY' defaults to TRUE and returns vector. Argh.
 df <- do.call(rbind, ISdfs)
 
-# Get stopwords
-stpWrds <- stopwords::stopwords(source = "smart")
-
 # Helper for making frequency tables
-makeFreqTbl <- function(values, colNm){
-  lsWords <- lapply(values, function(x){ 
+makeFTs <- function(values, colNm){
+  freqTbls <- lapply(values, function(x){ 
     tmp <- df[ df[[colNm]] == x, ]
-    tmp <- vec2Words(tmp[,1])
-    tmp <- tmp[ !(tmp %in% stpWrds) ]
+    ft <- corpusFreq::makeFreqTbl(tmp$value)
   })
-  freqTbl <- sapply(lsWords, table)
-  names(freqTbl) <- values
-  return(freqTbl)
 }
 
 # Word frequencies by tblCol
 tcNms <- paste(ISqueries$tableName, ISqueries$columnName, sep = "-")
-ISFreqsByTbl <- makeFreqTbl(tcNms, "tblCol")
+ISFreqsByTbl <- makeFTs(tcNms, "tblCol")
+names(ISFreqsByTbl) <- tcNms
 save(ISFreqsByTbl, file = "../data/ISFreqsByTbl.rda")
 
 # Word frequencies by Sdy
 studies <- unique(df$study_accession)
-ISFreqsBySdy <- makeFreqTbl(studies, "study_accession")
+ISFreqsBySdy <- makeFTs(studies, "study_accession")
+names(ISFreqsBySdy) <- studies
 save(ISFreqsBySdy, file = "../data/ISFreqsBySdy.rda")
 
 # No subsetting - all words as one vector
-all <- vec2Words(df$value)
-all <- all[ !(all %in% stpWrds) ]
-ISFreqsAll <- table(all)
+all <- corpusFreq::makeFreqTbl(df$value)
 save(ISFreqsAll, file = "../data/ISFreqsAll.rda")
 ```
 
