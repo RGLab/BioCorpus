@@ -1,0 +1,7 @@
+gsub(pattern = '"experiment', replacement = 'experiment', x)
+gsub(pattern = '+cpg', replacement = 'cpg', x)
+gsub(pattern = '+ocpg', replacement = 'ocpg', x)
+gsub(pattern = '+ot', replacement = '+ot', x)
+gsub(pattern = '+ova', replacement = 'ova', x)
+gsub(pattern = '+papain', replacement = 'papain', x)
+gsub(pattern = '70kilograms', replacement = 'kilograms', x)
