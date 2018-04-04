@@ -111,7 +111,7 @@ makeTfIdf <- function(freqTbl){
   subDf <- tDf %>%
     group_by(varNm) %>%
     arrange(desc(tf_idf)) %>%
-    slice(1:10)
+    slice(1:3)
 }
 
 topWordsByTbl <- makeTfIdf(ISFreqsByTbl)
@@ -209,7 +209,7 @@ DT::datatable(suggDf)
 
 ```{r correct-ISFreqsAll}
 # Using corpusFreq's interactive functions, we can correct the freqTbl and write out all our changes
-# to a file.
+# to a new rda file.
 
 # 1. Many terms less than 4 characters are abbreviations that are impossible to discern
 tmp <- suggDf[ nchar(incorrect) >= 4, ]
@@ -217,139 +217,32 @@ tmp <- suggDf[ nchar(incorrect) >= 4, ]
 # 2. Of those greater than or equal to 4 char, only looking at those where freqTbl offers
 # suggestions
 tmp <- tmp[ tmp$incorrect != tmp$bestGuess, ] # this leaves ~550 words
+tmp <- tmp[ tmp$incorrect != paste0(tmp$bestGuess, "s")] # remove plural changes
+tmp <- tmp[ grep(tmp$incorrect, tmp$hunspell, ignore.case = TRUE, invert = TRUE), ]
 
 # 3. Let's use the interactiveFindReplace() from corpusFreq to generate an R script
-# with all the substitutions we would like to make to names(ISFreqsAll)
+# with all the substitutions we would like to make to names(ISFreqsAll). The work
+# was done and the file correctISFreqsAll.R was generated. So we source that now.
 bw <- mapply(c, tmp$bestGuess, tmp$hunspell, SIMPLIFY = FALSE)
 names(bw) <- tmp$incorrect
-corrWords <- corpusFreq::InteractiveFindReplace(badWords = bw, 
-                                                input = suggDf$incorrect, 
-                                                outFile = "correctISFreqsAll.R")
-```
+# corrWords <- corpusFreq::InteractiveFindReplace(badWords = bw, 
+#                                                 input = suggDf$incorrect, 
+#                                                 outFile = "correctISFreqsAll.R")
+source("correctISFreqsAll.R") # get custom created fn `spellCheckRes()`
 
-```{r replacements}
-# 4. Incorporate that list of substitutions here ...
+# 4. Update the frequency table with the substitutions
 ISFreqsAllEdit <- ISFreqsAll
-x <- names(ISFreqsAllEdit)
-x <- gsub(pattern = 'adalumimab', replacement = 'adalimumab', x)
-x <- gsub(pattern = 'additon', replacement = 'addition', x)
-x <- gsub(pattern = 'addtition', replacement = 'addition', x)
-x <- gsub(pattern = 'aerosal', replacement = 'aerosol', x)
-x <- gsub(pattern = 'alfacept', replacement = 'alefacept', x)
-x <- gsub(pattern = 'appropiated', replacement = 'appropriated', x)
-x <- gsub(pattern = 'aquisition', replacement = 'acquisition', x)
-x <- gsub(pattern = 'arthitis', replacement = 'arthritis', x)
-x <- gsub(pattern = 'arthristis', replacement = 'arthritis', x)
-x <- gsub(pattern = 'arthrits', replacement = 'arthritis', x)
-x <- gsub(pattern = 'assessmentsp', replacement = 'assessments', x)
-x <- gsub(pattern = 'autoimmue', replacement = 'autoimmune', x)
-x <- gsub(pattern = 'bodys', replacement = 'bodies', x)
-x <- gsub(pattern = 'celcius', replacement = 'celsius', x)
-x <- gsub(pattern = 'celland', replacement = 'cell', x)
-x <- gsub(pattern = 'characteriization', replacement = 'characterization', x)
-x <- gsub(pattern = 'characterised', replacement = 'characterized', x)
-x <- gsub(pattern = 'chemokins', replacement = 'chemokines', x)
-x <- gsub(pattern = 'cholerae', replacement = 'cholera', x)
-x <- gsub(pattern = 'chronicially', replacement = 'chronically', x)
-x <- gsub(pattern = 'contiue', replacement = 'continue', x)
-x <- gsub(pattern = 'currrent', replacement = 'current', x)
-x <- gsub(pattern = 'dentritic', replacement = 'dendritic', x)
-x <- gsub(pattern = 'derimis', replacement = 'dermis', x)
-x <- gsub(pattern = 'determing', replacement = 'determining', x)
-x <- gsub(pattern = 'difficille', replacement = 'difficile', x)
-x <- gsub(pattern = 'diifferent', replacement = 'different', x)
-x <- gsub(pattern = 'exibit', replacement = 'exhibit', x)
-x <- gsub(pattern = 'exposured', replacement = 'exposed', x)
-x <- gsub(pattern = 'expres', replacement = 'express', x)
-x <- gsub(pattern = 'generalised', replacement = 'generalized', x)
-x <- gsub(pattern = 'genotying', replacement = 'genotyping', x)
-x <- gsub(pattern = 'genrally', replacement = 'generally', x)
-x <- gsub(pattern = 'gerneration', replacement = 'generation', x)
-x <- gsub(pattern = 'hemaglutinin', replacement = 'hemagglutinin', x)
-x <- gsub(pattern = 'homeostatis', replacement = 'homeostasis', x)
-x <- gsub(pattern = 'immunesuppressive', replacement = 'immunosuppressive', x)
-x <- gsub(pattern = 'immunizaed', replacement = 'immunized', x)
-x <- gsub(pattern = 'immunocompromise', replacement = 'immunocompromised', x)
-x <- gsub(pattern = 'immunodeficiancy', replacement = 'immunodeficiency', x)
-x <- gsub(pattern = 'immunomodulary', replacement = 'immunomodulatory', x)
-x <- gsub(pattern = 'indentify', replacement = 'identify', x)
-x <- gsub(pattern = 'indivduals', replacement = 'individuals', x)
-x <- gsub(pattern = 'indiviuals', replacement = 'individuals', x)
-x <- gsub(pattern = 'infeciton', replacement = 'infection', x)
-x <- gsub(pattern = 'influennza', replacement = 'influenza', x)
-x <- gsub(pattern = 'influenzae', replacement = 'influenza', x)
-x <- gsub(pattern = 'infuenza', replacement = 'influenza', x)
-x <- gsub(pattern = 'inidividuals', replacement = 'individuals', x)
-x <- gsub(pattern = 'iymphocytes', replacement = 'lymphocytes', x)
-x <- gsub(pattern = 'mainatined', replacement = 'maintained', x)
-x <- gsub(pattern = 'maintanance', replacement = 'maintenance', x)
-x <- gsub(pattern = 'mechnism', replacement = 'mechanism', x)
-x <- gsub(pattern = 'medicaion', replacement = 'medication', x)
-x <- gsub(pattern = 'mening', replacement = 'meaning', x)
-x <- gsub(pattern = 'metatastic', replacement = 'metastatic', x)
-x <- gsub(pattern = 'migate', replacement = 'migrate', x)
-x <- gsub(pattern = 'mulitple', replacement = 'multiple', x)
-x <- gsub(pattern = 'nonresponsiveness', replacement = 'unresponsiveness', x)
-x <- gsub(pattern = 'omilazumab', replacement = 'omalizumab', x)
-x <- gsub(pattern = 'ontarget', replacement = 'target', x)
-x <- gsub(pattern = 'orban', replacement = 'organ', x)
-x <- gsub(pattern = 'periperal', replacement = 'peripheral', x)
-x <- gsub(pattern = 'phenptype', replacement = 'phenotype', x)
-x <- gsub(pattern = 'pneumoccocal', replacement = 'pneumococcal', x)
-x <- gsub(pattern = 'pneunomax', replacement = 'pneumovax', x)
-x <- gsub(pattern = 'populationu', replacement = 'population', x)
-x <- gsub(pattern = 'pparticipants', replacement = 'participants', x)
-x <- gsub(pattern = 'predicitive', replacement = 'predictive', x)
-x <- gsub(pattern = 'predisone', replacement = 'prednisone', x)
-x <- gsub(pattern = 'pretrem', replacement = 'preterm', x)
-x <- gsub(pattern = 'previsou', replacement = 'previous', x)
-x <- gsub(pattern = 'prinicipal', replacement = 'principal', x)
-x <- gsub(pattern = 'prolferative', replacement = 'proliferative', x)
-x <- gsub(pattern = 'psoriais', replacement = 'psoriasis', x)
-x <- gsub(pattern = 'psoritatic', replacement = 'psoriatic', x)
-x <- gsub(pattern = 'puriried', replacement = 'purified', x)
-x <- gsub(pattern = 'reciepients', replacement = 'recipients', x)
-x <- gsub(pattern = 'recipents', replacement = 'recipients', x)
-x <- gsub(pattern = 'recombinaiton', replacement = 'recombination', x)
-x <- gsub(pattern = 'recominant', replacement = 'recombinant', x)
-x <- gsub(pattern = 'refernce', replacement = 'reference', x)
-x <- gsub(pattern = 'regualtory', replacement = 'regulatory', x)
-x <- gsub(pattern = 'reponse', replacement = 'response', x)
-x <- gsub(pattern = 'repsonse', replacement = 'response', x)
-x <- gsub(pattern = 'repsonses', replacement = 'responses', x)
-x <- gsub(pattern = 'rheumatiod', replacement = 'rheumatoid', x)
-x <- gsub(pattern = 'scleosis', replacement = 'sclerosis', x)
-x <- gsub(pattern = 'sclereosis', replacement = 'sclerosis', x)
-x <- gsub(pattern = 'seperated', replacement = 'separated', x)
-x <- gsub(pattern = 'shcontrol', replacement = 'control', x)
-x <- gsub(pattern = 'signalling', replacement = 'signaling', x)
-x <- gsub(pattern = 'steriod', replacement = 'steroid', x)
-x <- gsub(pattern = 'subejcts', replacement = 'subjects', x)
-x <- gsub(pattern = 'succesful', replacement = 'successful', x)
-x <- gsub(pattern = 'tcell', replacement = 't-cell', x)
-x <- gsub(pattern = 'tranplant', replacement = 'transplant', x)
-x <- gsub(pattern = 'tranplantation', replacement = 'transplantation', x)
-x <- gsub(pattern = 'transgeneic', replacement = 'transgenic', x)
-x <- gsub(pattern = 'transplanation', replacement = 'transplantation', x)
-x <- gsub(pattern = 'treatmed', replacement = 'treated', x)
-x <- gsub(pattern = 'tumour', replacement = 'tumor', x)
-x <- gsub(pattern = 'usteinumab', replacement = 'ustekinumab', x)
-
-names(ISFreqsAllEdit) <- x
-```
-
-```{r update-FT}
 isfae <- data.frame(word = names(ISFreqsAllEdit), 
                     Freq = unname(ISFreqsAllEdit), 
                     stringsAsFactors = F)
+isfae$word <- spellCheckRes(isfae$word)
 
+# 5. Update the frequencies since there are approx 100 non-unique rows now
 ISFreqsAllEdit <- isfae %>%
   group_by(word) %>%
   mutate(Freq = sum(Freq.Freq)) %>%
   summarize(unique(Freq))
 
+# 6. Save the edited ft
 save(ISFreqsAllEdit, file = "../data/ISFreqsAllEdit.rda")
-```
-
-
 ```
